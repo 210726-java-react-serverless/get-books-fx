@@ -14,4 +14,4 @@ Resources:
       Timeout: 30
       Tracing: Active
       Policies:
-      - dynamodb-readonly-books
+      - arn:aws:iam::011217676466:policy/dynamodb-readonly-books
