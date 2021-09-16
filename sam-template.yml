@@ -1,0 +1,15 @@
+# SAM template for CodeBuild
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: A simple AWS Lambda for searching book records within a DynamoDB table.
+Resources:
+  function:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: target/get-books-fx-1.0-SNAPSHOT.jar
+      Handler: com.revature.get_books.GetBooksHandler
+      Runtime: java8
+      Description: Java function
+      MemorySize: 128
+      Timeout: 10
+      Tracing: Active
