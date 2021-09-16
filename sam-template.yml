@@ -13,3 +13,5 @@ Resources:
       MemorySize: 256
       Timeout: 30
       Tracing: Active
+      Policies:
+      	- dynamodb-readonly-books
