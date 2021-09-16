@@ -10,6 +10,6 @@ Resources:
       Handler: com.revature.get_books.GetBooksHandler
       Runtime: java8.al2
       Description: Java function
-      MemorySize: 128
+      MemorySize: 256
       Timeout: 30
       Tracing: Active
