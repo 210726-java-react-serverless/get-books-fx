@@ -11,5 +11,5 @@ Resources:
       Runtime: java8
       Description: Java function
       MemorySize: 128
-      Timeout: 10
+      Timeout: 30
       Tracing: Active
