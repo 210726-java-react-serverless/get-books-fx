@@ -28,10 +28,11 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
     @Override
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent requestEvent, Context context) {
 
+
         LambdaLogger logger = context.getLogger();
         APIGatewayProxyResponseEvent responseEvent = new APIGatewayProxyResponseEvent();
 
-        logger.log("RECEIVED EVENT: " + requestEvent);
+        logger.log("Deployment successful!");
 
         Map<String, String> queryParams = requestEvent.getQueryStringParameters();
 
