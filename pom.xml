@@ -11,6 +11,7 @@
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
+        <aws.sdk.version>2.17.40</aws.sdk.version>
     </properties>
 
     <dependencies>
@@ -28,6 +29,13 @@
             <version>3.10.0</version>
         </dependency>
 
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>apache-client</artifactId>
+            <version>${aws.sdk.version}</version>
+        </dependency>
+
+
         <!-- JSON Parsing Dependencies -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -39,20 +47,20 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>dynamodb</artifactId>
-            <version>2.17.34</version>
+            <version>${aws.sdk.version}</version>
         </dependency>
 
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>dynamodb-enhanced</artifactId>
-            <version>2.17.34</version>
+            <version>${aws.sdk.version}</version>
         </dependency>
 
         <!-- AWS S3 SDK Dependency -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
-            <version>2.17.40</version>
+            <version>${aws.sdk.version}</version>
         </dependency>
 
 
@@ -61,6 +69,7 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.20</version>
+            <scope>compile</scope>
         </dependency>
 
     </dependencies>
