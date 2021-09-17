@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @DynamoDbBean
-class Book {
+public class Book {
 
     private String id;
     private String isbn;
@@ -19,10 +19,6 @@ class Book {
     private List<String> authors;
     private List<String> genres;
     private String imageKey;
-
-    public Book() {
-        super();
-    }
 
     @DynamoDbPartitionKey
     public String getId() {
