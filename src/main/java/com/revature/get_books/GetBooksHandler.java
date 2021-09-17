@@ -8,16 +8,17 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import lombok.Data;
-import lombok.SneakyThrows;
+
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import lombok.Data;
+import lombok.SneakyThrows;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
@@ -29,7 +30,7 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
 
     private static final Gson mapper = new GsonBuilder().setPrettyPrinting().create();
     private final DynamoDBMapper dbReader = new DynamoDBMapper(AmazonDynamoDBClientBuilder.defaultClient());
-    S3Presigner presigner = S3Presigner.create();
+    private final S3Presigner presigner = S3Presigner.create();
 
     @Override
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent requestEvent, Context context) {
@@ -63,6 +64,8 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
                                                             return bookResp;
                                                         }).collect(Collectors.toList());
 
+
+        presigner.close();
 
         responseEvent.setBody(mapper.toJson(respBody));
         return responseEvent;
@@ -154,33 +157,20 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
 
     public String getPresignedImageUrl(String imageKey, LambdaLogger logger) {
 
-        // Create a GetObjectRequest to be pre-signed
-        GetObjectRequest getObjectRequest =
-                GetObjectRequest.builder()
-                                .bucket("bookstore-images-bucket")
-                                .key(imageKey)
-                                .build();
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                                                            .bucket("bookstore-images-bucket")
+                                                            .key(imageKey)
+                                                            .build();
 
-        // Create a GetObjectPresignRequest to specify the signature duration
-        GetObjectPresignRequest getObjectPresignRequest =
-                GetObjectPresignRequest.builder()
-                                       .signatureDuration(Duration.ofMinutes(10))
-                                       .getObjectRequest(getObjectRequest)
-                                       .build();
+        GetObjectPresignRequest getObjectPresignRequest = GetObjectPresignRequest.builder()
+                                                                                 .signatureDuration(Duration.ofMinutes(10))
+                                                                                 .getObjectRequest(getObjectRequest)
+                                                                                 .build();
 
-        // Generate the presigned request
-        PresignedGetObjectRequest presignedGetObjectRequest =
-                presigner.presignGetObject(getObjectPresignRequest);
+        PresignedGetObjectRequest presignedGetObjectRequest = presigner.presignGetObject(getObjectPresignRequest);
 
-        // Log the presigned URL
         String presignedUrl = presignedGetObjectRequest.url().toString();
         logger.log("Presigned URL: " + presignedUrl);
-
-        // It is recommended to close the S3Presigner when it is done being used, because some credential
-        // providers (e.g. if your AWS profile is configured to assume an STS role) require system resources
-        // that need to be freed. If you are using one S3Presigner per application (as recommended), this
-        // usually is not needed.
-        presigner.close();
 
         return presignedUrl;
     }
