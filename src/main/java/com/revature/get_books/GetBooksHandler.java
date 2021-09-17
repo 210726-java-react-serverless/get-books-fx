@@ -152,6 +152,9 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
         @DynamoDBAttribute
         private List<String> genres;
 
+        @DynamoDBAttribute
+        private String imageKey;
+
         public static List<String> getFieldNameStrings() {
             return Stream.of(Book.class.getDeclaredFields()).map(Field::getName).collect(Collectors.toList());
         }
