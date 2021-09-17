@@ -20,6 +20,10 @@ class Book {
     private List<String> genres;
     private String imageKey;
 
+    public Book() {
+        super();
+    }
+
     @DynamoDbPartitionKey
     public String getId() {
         return id;
