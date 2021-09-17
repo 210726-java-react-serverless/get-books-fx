@@ -8,22 +8,28 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import lombok.Data;
 import lombok.SneakyThrows;
-import org.w3c.dom.Attr;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 import java.lang.reflect.Field;
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
     private static final Gson mapper = new GsonBuilder().setPrettyPrinting().create();
     private final DynamoDBMapper dbReader = new DynamoDBMapper(AmazonDynamoDBClientBuilder.defaultClient());
+    S3Presigner presigner = S3Presigner.create();
 
     @Override
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent requestEvent, Context context) {
@@ -36,12 +42,29 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
 
         Map<String, String> queryParams = requestEvent.getQueryStringParameters();
 
+        List<Book> books = new ArrayList<>();
+
         if (queryParams == null || queryParams.isEmpty()) {
-            responseEvent.setBody(mapper.toJson(getAllBooks()));
-            return responseEvent;
+            books = getAllBooks();
+        } else {
+            books = searchBooks(queryParams, logger);
         }
 
-        responseEvent.setBody(mapper.toJson(searchBooks(queryParams, logger)));
+        List<BookResponse> respBody = books.stream().map(book -> {
+                                                            BookResponse bookResp = new BookResponse();
+                                                            bookResp.setId(book.id);
+                                                            bookResp.setTitle(book.title);
+                                                            bookResp.setPublisher(book.publisher);
+                                                            bookResp.setAuthors(book.authors);
+                                                            bookResp.setGenres(book.genres);
+                                                            if (book.imageKey != null && !book.imageKey.isEmpty()) {
+                                                                bookResp.setImageUrl(getPresignedImageUrl(book.imageKey, logger));
+                                                            }
+                                                            return bookResp;
+                                                        }).collect(Collectors.toList());
+
+
+        responseEvent.setBody(mapper.toJson(respBody));
         return responseEvent;
 
     }
@@ -127,6 +150,50 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
 
         return dbReader.scan(Book.class, scanExpr);
 
+    }
+
+    public String getPresignedImageUrl(String imageKey, LambdaLogger logger) {
+
+        // Create a GetObjectRequest to be pre-signed
+        GetObjectRequest getObjectRequest =
+                GetObjectRequest.builder()
+                                .bucket("bookstore-images-bucket")
+                                .key(imageKey)
+                                .build();
+
+        // Create a GetObjectPresignRequest to specify the signature duration
+        GetObjectPresignRequest getObjectPresignRequest =
+                GetObjectPresignRequest.builder()
+                                       .signatureDuration(Duration.ofMinutes(10))
+                                       .getObjectRequest(getObjectRequest)
+                                       .build();
+
+        // Generate the presigned request
+        PresignedGetObjectRequest presignedGetObjectRequest =
+                presigner.presignGetObject(getObjectPresignRequest);
+
+        // Log the presigned URL
+        String presignedUrl = presignedGetObjectRequest.url().toString();
+        logger.log("Presigned URL: " + presignedUrl);
+
+        // It is recommended to close the S3Presigner when it is done being used, because some credential
+        // providers (e.g. if your AWS profile is configured to assume an STS role) require system resources
+        // that need to be freed. If you are using one S3Presigner per application (as recommended), this
+        // usually is not needed.
+        presigner.close();
+
+        return presignedUrl;
+    }
+
+    @Data
+    public static class BookResponse {
+        private String id;
+        private String isbn;
+        private String title;
+        private String publisher;
+        private List<String> authors;
+        private List<String> genres;
+        private String imageUrl;
     }
 
     @Data
