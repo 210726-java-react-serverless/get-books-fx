@@ -1,15 +1,19 @@
 package com.revature.get_books;
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.datamodeling.*;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
+import software.amazon.awssdk.enhanced.dynamodb.Expression;
+import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
+import software.amazon.awssdk.enhanced.dynamodb.model.ScanEnhancedRequest;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -18,20 +22,16 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequ
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import lombok.Data;
 import lombok.SneakyThrows;
 
-import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
     private static final Gson mapper = new GsonBuilder().setPrettyPrinting().create();
-    private final DynamoDBMapper dbReader = new DynamoDBMapper(AmazonDynamoDBClientBuilder.defaultClient());
-    private final S3Presigner presigner = S3Presigner.builder().region(Region.of("us-west-1")).build();
+    private final DynamoDbTable<Book> bookTable = DynamoDbEnhancedClient.create().table("books", TableSchema.fromBean(Book.class));
+    private final S3Presigner presigner = S3Presigner.builder().region(Region.US_WEST_1).build();
 
     @Override
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent requestEvent, Context context) {
@@ -44,7 +44,7 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
 
         Map<String, String> queryParams = requestEvent.getQueryStringParameters();
 
-        List<Book> books = new ArrayList<>();
+        PageIterable<Book> books;
 
         if (queryParams == null || queryParams.isEmpty()) {
             books = getAllBooks();
@@ -52,18 +52,20 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
             books = searchBooks(queryParams, logger);
         }
 
-        List<BookResponse> respBody = books.stream().map(book -> {
-                                                            BookResponse bookResp = new BookResponse();
-                                                            bookResp.setId(book.id);
-                                                            bookResp.setTitle(book.title);
-                                                            bookResp.setPublisher(book.publisher);
-                                                            bookResp.setAuthors(book.authors);
-                                                            bookResp.setGenres(book.genres);
-                                                            if (book.imageKey != null && !book.imageKey.isEmpty()) {
-                                                                bookResp.setImageUrl(getPresignedImageUrl(book.imageKey, logger));
-                                                            }
-                                                            return bookResp;
-                                                        }).collect(Collectors.toList());
+        List<BookResponse> respBody = new ArrayList<>();
+        books.stream()
+             .forEach(page -> page.items().forEach(book -> {
+                                  BookResponse bookResp = new BookResponse();
+                                  bookResp.setId(book.getId());
+                                  bookResp.setTitle(book.getTitle());
+                                  bookResp.setPublisher(book.getPublisher());
+                                  bookResp.setAuthors(book.getAuthors());
+                                  bookResp.setGenres(book.getGenres());
+                                  if (book.getImageKey() != null && !book.getImageKey().isEmpty()) {
+                                      bookResp.setImageUrl(getPresignedImageUrl(book.getImageKey(), logger));
+                                  }
+                                  respBody.add(bookResp);
+             }));
 
 
         presigner.close();
@@ -74,14 +76,12 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
     }
 
 
-
-
-    public List<Book> getAllBooks() {
-        return dbReader.scan(Book.class, new DynamoDBScanExpression());
+    public PageIterable<Book> getAllBooks() {
+        return bookTable.scan();
     }
 
     @SneakyThrows
-    public List<Book> searchBooks(Map<String, String> queryParams, LambdaLogger logger) {
+    public PageIterable<Book> searchBooks(Map<String, String> queryParams, LambdaLogger logger) {
 
         StringBuilder filterExprBuilder = new StringBuilder();
         Map<String, AttributeValue> attributeValues = new HashMap<>();
@@ -111,7 +111,7 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
 
                     String attributeKeyVar = ":" + paramKey;
                     filterExprBuilder.append(paramKey).append(" = ").append(attributeKeyVar);
-                    attributeValues.put(attributeKeyVar, new AttributeValue().withS(paramVal));
+                    attributeValues.put(attributeKeyVar, AttributeValue.builder().s(paramVal).build());
 
                     break;
 
@@ -122,7 +122,7 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
 
                         String attrKey = ":" + paramKey;
                         filterExprBuilder.append("contains(").append(paramKey).append(",").append(attrKey).append(")");
-                        attributeValues.put(attrKey, new AttributeValue().withS(paramVal));
+                        attributeValues.put(attrKey, AttributeValue.builder().s(paramVal).build());
 
                     } else {
 
@@ -132,7 +132,7 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
                             String key = ":" + paramKey + j;
                             filterExprBuilder.append("contains(").append(paramKey).append(",").append(key).append(")");
                             if (j != listVals.length - 1) filterExprBuilder.append(" or ");
-                            attributeValues.put(key, new AttributeValue().withS(listVals[j]));
+                            attributeValues.put(key, AttributeValue.builder().s(listVals[j]).build());
                         }
                     }
 
@@ -148,11 +148,13 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
                 "\t\"attributeValues\": \"" + attributeValues + "\"" +
                 "\n}");
 
-       DynamoDBScanExpression scanExpr = new DynamoDBScanExpression()
-               .withFilterExpression(filterExprBuilder.toString())
-               .withExpressionAttributeValues(attributeValues);
+        Expression filterExpr = Expression.builder().expression(filterExprBuilder.toString()).expressionValues(attributeValues).build();
 
-        return dbReader.scan(Book.class, scanExpr);
+        ScanEnhancedRequest scanExpr = ScanEnhancedRequest.builder()
+                                                 .filterExpression(filterExpr)
+                                                 .build();
+
+        return bookTable.scan(scanExpr);
 
     }
 
@@ -174,49 +176,6 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
         logger.log("Presigned URL: " + presignedUrl);
 
         return presignedUrl;
-    }
-
-    @Data
-    public static class BookResponse {
-        private String id;
-        private String isbn;
-        private String title;
-        private String publisher;
-        private List<String> authors;
-        private List<String> genres;
-        private String imageUrl;
-    }
-
-    @Data
-    @DynamoDBTable(tableName = "books")
-    public static class Book {
-
-        @DynamoDBHashKey
-        @DynamoDBAutoGeneratedKey
-        private String id;
-
-        @DynamoDBAttribute
-        private String isbn;
-
-        @DynamoDBAttribute
-        private String title;
-
-        @DynamoDBAttribute
-        private String publisher;
-
-        @DynamoDBAttribute
-        private List<String> authors;
-
-        @DynamoDBAttribute
-        private List<String> genres;
-
-        @DynamoDBAttribute
-        private String imageKey;
-
-        public static List<String> getFieldNameStrings() {
-            return Stream.of(Book.class.getDeclaredFields()).map(Field::getName).collect(Collectors.toList());
-        }
-
     }
 
 }
