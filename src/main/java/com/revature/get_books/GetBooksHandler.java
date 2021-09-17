@@ -9,6 +9,7 @@ import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -30,7 +31,7 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
 
     private static final Gson mapper = new GsonBuilder().setPrettyPrinting().create();
     private final DynamoDBMapper dbReader = new DynamoDBMapper(AmazonDynamoDBClientBuilder.defaultClient());
-    private final S3Presigner presigner = S3Presigner.create();
+    private final S3Presigner presigner = S3Presigner.builder().region(Region.of("us-west-1")).build();
 
     @Override
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent requestEvent, Context context) {
