@@ -57,16 +57,16 @@ public class GetBooksHandler implements RequestHandler<APIGatewayProxyRequestEve
         List<BookResponse> respBody = new ArrayList<>();
         books.stream()
              .forEach(page -> page.items().forEach(book -> {
-                                  BookResponse bookResp = new BookResponse();
-                                  bookResp.setId(book.getId());
-                                  bookResp.setTitle(book.getTitle());
-                                  bookResp.setPublisher(book.getPublisher());
-                                  bookResp.setAuthors(book.getAuthors());
-                                  bookResp.setGenres(book.getGenres());
-                                  if (book.getImageKey() != null && !book.getImageKey().isEmpty()) {
-                                      bookResp.setImageUrl(getPresignedImageUrl(book.getImageKey(), logger));
-                                  }
-                                  respBody.add(bookResp);
+                  BookResponse bookResp = new BookResponse();
+                  bookResp.setId(book.getId());
+                  bookResp.setTitle(book.getTitle());
+                  bookResp.setPublisher(book.getPublisher());
+                  bookResp.setAuthors(book.getAuthors());
+                  bookResp.setGenres(book.getGenres());
+                  if (book.getImageKey() != null && !book.getImageKey().isEmpty()) {
+                      bookResp.setImageUrl(getPresignedImageUrl(book.getImageKey(), logger));
+                  }
+                  respBody.add(bookResp);
              }));
 
 
