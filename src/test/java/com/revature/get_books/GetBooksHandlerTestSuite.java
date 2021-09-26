@@ -17,6 +17,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings({"unchecked"})
 public class GetBooksHandlerTestSuite {
 
     static TestLogger testLogger;
@@ -75,7 +76,6 @@ public class GetBooksHandlerTestSuite {
         mockRequestEvent.withBody(null);
         mockRequestEvent.withQueryStringParameters(null);
 
-        @SuppressWarnings("unchecked")
         PageIterable<Book> mockBooks = (PageIterable<Book>) mock(PageIterable.class);
         when(mockBookRepo.getAllBooks()).thenReturn(mockBooks);
 
@@ -107,7 +107,6 @@ public class GetBooksHandlerTestSuite {
         mockRequestEvent.withBody(null);
         mockRequestEvent.withQueryStringParameters(Collections.singletonMap("isbn", "0123456789-123"));
 
-        @SuppressWarnings("unchecked")
         PageIterable<Book> mockBooks = (PageIterable<Book>) mock(PageIterable.class);
         Map<String, String> stubbedQueryParams = mockRequestEvent.getQueryStringParameters();
         when(mockBookRepo.searchBooks(stubbedQueryParams, testLogger)).thenReturn(mockBooks);

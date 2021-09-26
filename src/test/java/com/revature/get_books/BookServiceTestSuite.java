@@ -11,11 +11,11 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequ
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings({"unchecked", "rawtypes"})
 public class BookServiceTestSuite {
 
     static TestLogger testLogger;
@@ -73,7 +73,6 @@ public class BookServiceTestSuite {
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public void given_emptyIterable_returns_emptyList() {
 
         // Arrange
@@ -92,7 +91,6 @@ public class BookServiceTestSuite {
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public void given_validIterable_returns_populatedList() throws MalformedURLException {
 
         // Arrange
