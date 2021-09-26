@@ -10,7 +10,9 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequ
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class BookService {
 
@@ -28,20 +30,31 @@ public class BookService {
 
         logger.log("Mapping provided models to response. Provided models: " + books);
 
+        if (books == null || !books.iterator().hasNext()) {
+            return Collections.emptyList();
+        }
+
         List<BookResponse> respBody = new ArrayList<>();
 
+        logger.log("Books: " + books.stream());
         books.stream()
              .forEach(page -> page.items().forEach(book -> {
-                 BookResponse bookResp = new BookResponse();
-                 bookResp.setId(book.getId());
-                 bookResp.setTitle(book.getTitle());
-                 bookResp.setPublisher(book.getPublisher());
-                 bookResp.setAuthors(book.getAuthors());
-                 bookResp.setGenres(book.getGenres());
+
+                 logger.log("Book: " + book);
+
+                 String imageUrl = "";
                  if (book.getImageKey() != null && !book.getImageKey().isEmpty()) {
-                     bookResp.setImageUrl(getPresignedImageUrl(book.getImageKey(), logger));
+                     imageUrl = getPresignedImageUrl(book.getImageKey(), logger);
                  }
-                 respBody.add(bookResp);
+
+                 respBody.add(BookResponse.builder()
+                                          .id(book.getId())
+                                          .title(book.getTitle())
+                                          .publisher(book.getPublisher())
+                                          .authors(book.getAuthors())
+                                          .genres(book.getGenres())
+                                          .imageUrl(imageUrl)
+                                          .build());
              }));
 
         logger.log("Returning mapped response body: " + respBody);
@@ -50,7 +63,7 @@ public class BookService {
 
     }
 
-    public String getPresignedImageUrl(String imageKey, LambdaLogger logger) {
+    private String getPresignedImageUrl(String imageKey, LambdaLogger logger) {
 
         logger.log("Fetching presigned URL for provided object key: " + imageKey);
 

@@ -9,10 +9,12 @@ import com.revature.get_books.stubs.TestLogger;
 import org.junit.jupiter.api.*;
 import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 public class GetBooksHandlerTestSuite {
@@ -24,6 +26,7 @@ public class GetBooksHandlerTestSuite {
     Context mockContext;
     BookRepository mockBookRepo;
     BookService mockBookService;
+    BookResponse stubbedBookResponse;
 
     @BeforeAll
     public static void suiteSetUp() {
@@ -38,12 +41,23 @@ public class GetBooksHandlerTestSuite {
 
         mockContext = mock(Context.class);
         when(mockContext.getLogger()).thenReturn(testLogger);
+
+        stubbedBookResponse = BookResponse.builder()
+                                      .id("123")
+                                      .isbn("0123456789-123")
+                                      .title("Test Book")
+                                      .publisher("Revature")
+                                      .authors(Arrays.asList("Test Author 1", "Test Author 2"))
+                                      .genres(Arrays.asList("Test Genre 1", "Test Genre 2"))
+                                      .imageUrl("https://test-book-cover-image-url")
+                                      .build();
     }
 
     @AfterEach
     public void caseTearDown() {
         sut = null;
         reset(mockContext, mockBookRepo, mockBookService);
+        stubbedBookResponse = null;
     }
 
     @AfterAll
@@ -52,7 +66,7 @@ public class GetBooksHandlerTestSuite {
     }
 
     @Test
-    public void given_validRequest_getAllBooks_returns_listOfBooks() {
+    public void given_validRequest_handlerGetsAllBooks() {
 
         // Arrange
         APIGatewayProxyRequestEvent mockRequestEvent = new APIGatewayProxyRequestEvent();
@@ -65,14 +79,7 @@ public class GetBooksHandlerTestSuite {
         PageIterable<Book> mockBooks = (PageIterable<Book>) mock(PageIterable.class);
         when(mockBookRepo.getAllBooks()).thenReturn(mockBooks);
 
-        List<BookResponse> mockBookResponses = new ArrayList<>();
-        mockBookResponses.add(new BookResponse("123",
-                                               "0123456789-123",
-                                               "Test Book",
-                                               "Revature",
-                                               Arrays.asList("Test Author 1", "Test Author 2"),
-                                               Arrays.asList("Test Genre 1", "Test Genre 2"),
-                                               "https://test-book-cover-image-url"));
+        List<BookResponse> mockBookResponses = Collections.singletonList(stubbedBookResponse);
         when(mockBookService.mapResponse(mockBooks, testLogger)).thenReturn(mockBookResponses);
 
         APIGatewayProxyResponseEvent expectedResponse = new APIGatewayProxyResponseEvent();
@@ -84,9 +91,42 @@ public class GetBooksHandlerTestSuite {
 
         // Assert
         verify(mockBookRepo, times(1)).getAllBooks();
-//        verify(mockBookRepo, times(0)).searchBooks(any(), testLogger);
+        verify(mockBookRepo, times(0)).searchBooks(Collections.emptyMap(), testLogger);
         verify(mockBookService, times(1)).mapResponse(mockBooks, testLogger);
-        Assertions.assertEquals(expectedResponse, actualResponse);
+        assertEquals(expectedResponse, actualResponse);
+
+    }
+
+    @Test
+    public void given_validRequest_handlerSearchesForBookByIsbn() {
+
+        // Arrange
+        APIGatewayProxyRequestEvent mockRequestEvent = new APIGatewayProxyRequestEvent();
+        mockRequestEvent.withPath("/books");
+        mockRequestEvent.withHttpMethod("GET");
+        mockRequestEvent.withBody(null);
+        mockRequestEvent.withQueryStringParameters(Collections.singletonMap("isbn", "0123456789-123"));
+
+        @SuppressWarnings("unchecked")
+        PageIterable<Book> mockBooks = (PageIterable<Book>) mock(PageIterable.class);
+        Map<String, String> stubbedQueryParams = mockRequestEvent.getQueryStringParameters();
+        when(mockBookRepo.searchBooks(stubbedQueryParams, testLogger)).thenReturn(mockBooks);
+
+        List<BookResponse> mockBookResponses = Collections.singletonList(stubbedBookResponse);
+        when(mockBookService.mapResponse(mockBooks, testLogger)).thenReturn(mockBookResponses);
+
+        APIGatewayProxyResponseEvent expectedResponse = new APIGatewayProxyResponseEvent();
+        expectedResponse.setStatusCode(200);
+        expectedResponse.setBody(mapper.toJson(mockBookResponses));
+
+        // Act
+        APIGatewayProxyResponseEvent actualResponse = sut.handleRequest(mockRequestEvent, mockContext);
+
+        // Assert
+        verify(mockBookRepo, times(0)).getAllBooks();
+        verify(mockBookRepo, times(1)).searchBooks(stubbedQueryParams, testLogger);
+        verify(mockBookService, times(1)).mapResponse(mockBooks, testLogger);
+        assertEquals(expectedResponse, actualResponse);
 
     }
 
