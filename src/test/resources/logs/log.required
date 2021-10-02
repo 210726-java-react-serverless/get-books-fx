@@ -1,0 +1,1 @@
+This file is required so that the src/test/resources directory exists when the application is sourced and built remotely.
