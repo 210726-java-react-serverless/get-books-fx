@@ -36,15 +36,14 @@ public class BookServiceTestSuite {
 
         stubbedBookPage = Page.create(
                                     Collections.singletonList(
-                                            Book.builder()
-                                                .id("123")
-                                                .isbn("0123456789-123")
-                                                .title("Test Book")
-                                                .publisher("Revature")
-                                                .authors(Arrays.asList("Test Author 1", "Test Author 2"))
-                                                .genres(Arrays.asList("Test Genre 1", "Test Genre 2"))
-                                                .imageKey("test-book-cover-image-key")
-                                                .build()
+                                            new Book()
+                                                .setId("123")
+                                                .setIsbn("0123456789-123")
+                                                .setTitle("Test Book")
+                                                .setPublisher("Revature")
+                                                .setAuthors(Arrays.asList("Test Author 1", "Test Author 2"))
+                                                .setGenres(Arrays.asList("Test Genre 1", "Test Genre 2"))
+                                                .setImageKey("test-book-cover-image-key")
                                         )
                                     );
     }

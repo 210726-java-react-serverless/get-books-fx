@@ -36,9 +36,13 @@ public class BookService {
 
         List<BookResponse> respBody = new ArrayList<>();
 
-        logger.log("Books: " + books.stream());
+        logger.log("Books: " + books);
         books.stream()
              .forEach(page -> page.items().forEach(book -> {
+
+                 if (book == null) {
+                     return;
+                 }
 
                  logger.log("Book: " + book);
 
