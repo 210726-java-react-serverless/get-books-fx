@@ -34,18 +34,15 @@ public class BookServiceTestSuite {
         mockPresigner = mock(S3Presigner.class);
         sut = new BookService(mockPresigner);
 
-        stubbedBookPage = Page.create(
-                                    Collections.singletonList(
-                                            new Book()
-                                                .setId("123")
-                                                .setIsbn("0123456789-123")
-                                                .setTitle("Test Book")
-                                                .setPublisher("Revature")
-                                                .setAuthors(Arrays.asList("Test Author 1", "Test Author 2"))
-                                                .setGenres(Arrays.asList("Test Genre 1", "Test Genre 2"))
-                                                .setImageKey("test-book-cover-image-key")
-                                        )
-                                    );
+        Book stubbedBook = new Book();
+        stubbedBook.setId("123");
+        stubbedBook.setIsbn("0123456789-123");
+        stubbedBook.setTitle("Test Book");
+        stubbedBook.setPublisher("Revature");
+        stubbedBook.setAuthors(Arrays.asList("Test Author 1", "Test Author 2"));
+        stubbedBook.setGenres(Arrays.asList("Test Genre 1", "Test Genre 2"));
+        stubbedBook.setImageKey("test-book-cover-image-key");
+        stubbedBookPage = Page.create(Collections.singletonList(stubbedBook));
     }
 
     @AfterEach
